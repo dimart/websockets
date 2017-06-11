@@ -10,10 +10,12 @@ import akka.util.ByteString
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 
-import akka.stream.scaladsl.{ Flow }
+import akka.stream.scaladsl.{ Flow, Sink }
 import akka.http.scaladsl.model.ws.{ TextMessage, Message }
+
 
 object ServerMain {
   def main(args: Array[String]): Unit = {
@@ -51,7 +53,36 @@ object ServerMain {
           get {
             handleWebSocketMessages(wsHandler)
           }
+        },
+        path("host") {
+          get {
+            extractHost { host =>
+              complete(HttpEntity(s"The host is: $host"))
+            }
+          }
+        },
+        path("totalBytes") {
+          post {
+            extractDataBytes { bytes =>
+              val sumBytes = bytes.runFold(0) { case (acc, chunk) => acc + chunk.size }
+              onComplete(sumBytes) { total =>
+                complete(HttpEntity(s"Total number of received bytes: ${total.getOrElse(0)}"))
+              }
+            }
+          }
+        },
+        path("protocol") {
+          get {
+            extract(_.request.protocol) { protocol =>
+              complete(HttpEntity(s"The protocol is: ${protocol}"))
+            }
+          }
         }
+//        path("deaf_ws") {
+//          get {
+//            handleWebSocketMessages(Flow.fromSinkAndSource(Sink.ignore, TextMessage(numbers.map(_.toString))))
+//          }
+//        }
       )
 
     Await.result(Http().bindAndHandle(routes, "0.0.0.0", 8080), 1.seconds)
