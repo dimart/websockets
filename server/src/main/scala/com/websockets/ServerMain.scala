@@ -28,7 +28,8 @@ object ServerMain {
     val wsHandler =
       Flow[Message]
         .collect {
-          case tm: TextMessage => TextMessage(Source.single("Guten Tag, ") ++ tm.textStream)
+//          case tm: TextMessage => TextMessage(Source.single("Guten Tag, ") ++ tm.textStream)
+          case tm: TextMessage => TextMessage.Strict("Guten Tag, " + tm.getStrictText)
         }
 
     val routes =
